@@ -97,11 +97,6 @@ public class Notifier
 		.addEscape('"', "'")
 		.build();
 
-	// Notifier properties
-	private static final Color FLASH_COLOR = new Color(255, 0, 0, 70);
-	private static final int MINIMUM_FLASH_DURATION_MILLIS = 2000;
-	private static final int MINIMUM_FLASH_DURATION_TICKS = MINIMUM_FLASH_DURATION_MILLIS / Constants.CLIENT_TICK_LENGTH;
-
 	private static final String appName = RuneLiteProperties.getTitle();
 
 	private static final File NOTIFICATION_FILE = new File(RuneLite.RUNELITE_DIR, "notification.wav");
@@ -216,20 +211,22 @@ public class Notifier
 		}
 
 		FlashNotification flashNotification = runeLiteConfig.flashNotification();
+		final int minimum_flash_duration_millis = runeLiteConfig.flashNotificationDuration();
+		final int minimum_flash_duration_ticks = minimum_flash_duration_millis / Constants.CLIENT_TICK_LENGTH;
 
-		if (Instant.now().minusMillis(MINIMUM_FLASH_DURATION_MILLIS).isAfter(flashStart))
+		if (Instant.now().minusMillis(minimum_flash_duration_millis).isAfter(flashStart))
 		{
 			switch (flashNotification)
 			{
-				case FLASH_TWO_SECONDS:
-				case SOLID_TWO_SECONDS:
+				case FLASH_FOR_DURATION:
+				case SOLID_FOR_DURATION:
 					flashStart = null;
 					return;
 				case SOLID_UNTIL_CANCELLED:
 				case FLASH_UNTIL_CANCELLED:
 					// Any interaction with the client since the notification started will cancel it after the minimum duration
-					if ((client.getMouseIdleTicks() < MINIMUM_FLASH_DURATION_TICKS
-						|| client.getKeyboardIdleTicks() < MINIMUM_FLASH_DURATION_TICKS
+					if ((client.getMouseIdleTicks() < minimum_flash_duration_ticks
+						|| client.getKeyboardIdleTicks() < minimum_flash_duration_ticks
 						|| client.getMouseLastPressedMillis() > mouseLastPressedMillis) && clientUI.isFocused())
 					{
 						flashStart = null;
@@ -241,14 +238,20 @@ public class Notifier
 
 		if (client.getGameCycle() % 40 >= 20
 			// For solid colour, fall through every time.
-			&& (flashNotification == FlashNotification.FLASH_TWO_SECONDS
+			&& (flashNotification == FlashNotification.FLASH_FOR_DURATION
 			|| flashNotification == FlashNotification.FLASH_UNTIL_CANCELLED))
 		{
 			return;
 		}
 
 		final Color color = graphics.getColor();
-		graphics.setColor(FLASH_COLOR);
+		final Color selectedColor = runeLiteConfig.flashNotificationColor();
+		final Color newColor = new Color(
+				selectedColor.getRed(),
+				selectedColor.getGreen(),
+				selectedColor.getBlue(),
+				70);
+		graphics.setColor(newColor);
 		graphics.fill(new Rectangle(client.getCanvas().getSize()));
 		graphics.setColor(color);
 	}
